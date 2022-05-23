@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "module": "CommonJS",
+    "outDir": "dist",
+    "target": "ES6",
+    "esModuleInterop": true,
+    "strict": false,
+    "strictPropertyInitialization": false,
+    "compileOnSave": false,
+    "importHelpers": true
+  },
+  "include": [
+    "src/**/*"
+  ]
+}
