@@ -1,55 +1,27 @@
 import { User } from './type/User';
-
+const joi = require('joi');
 const express = require('express');
 const app = express();
+const mysql = require('mysql');
+
+
+const db = mysql.createConnection({
+  host     : 'localhost',
+  user     : 'root',
+  password : 'Muh*19932011',
+  database : 'userTest',
+  port: '3306'
+});
+
+db.connect((err) => {
+  if(err){
+      throw err;
+  }
+  console.log('MySql is Connected...!!!!');
+});
 
 app.use(express.json());
 
-const users: User[] = [
-  {
-    id: 1,
-    nom: 'Almokdad',
-    prenom: 'muhanad',
-    civilite: 'Homme',
-    email: 'mouhand@gmail.com',
-    date_de_naissance: '02/01/1993',
-    address: {
-      numeroRue: '99',
-      nomRue: 'crosne',
-      cp: '54000',
-      ville: 'Nancy'
-    }
-  },
-  {
-    id: 2,
-    nom: 'Almokdad',
-    prenom: 'muhanad',
-    civilite: 'Homme',
-    email: 'mouhand@gmail.com',
-    date_de_naissance: '02/01/1993',
-    address: {
-      numeroRue: '99',
-      nomRue: 'crosne',
-      cp: '54000',
-      ville: 'Nancy'
-    }
-  },
-  {
-    id: 3,
-    nom: 'Almokdad',
-    prenom: 'muhanad',
-    civilite: 'Homme',
-    email: 'mouhand@gmail.com',
-    date_de_naissance: '02/01/1993',
-    address: {
-      numeroRue: '99',
-      nomRue: 'crosne',
-      cp: '54000',
-      ville: 'Nancy'
-    }
-  },
-
-];
 
 app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -60,7 +32,12 @@ app.use((req, res, next) => {
 
 app.get('/api/users', async (req, res) => {
   try {
-    await res.status(200).json(users);
+    db.query('SELECT * FROM users', async (error, users, fields)=>{
+      if (error) {
+        throw error
+      }
+     await res.status(200).json(users);
+    })
   } catch (e) {
     res.status(500).send(e.message);
   }
@@ -68,27 +45,48 @@ app.get('/api/users', async (req, res) => {
 
 
 app.get('/api/user/:id', async (req, res) => {
-  const id: number = parseInt(req.params.id);
+  const id: number = req.params.id;
   try {
-    const user: User = users.find(user => user.id === id);
-    if (!user){
-      throw new Error('user not founded');
-    }else {
-      await res.status(200).json(user)
-    }
-    await res.status(200).json(user)
+    db.query(`SELECT * FROM users WHERE iduser =${id}`, async (error, user, fields)=>{
+      if (error) {
+        throw error
+      }
+     await res.status(200).json(user);
+    })
   } catch (e) {
     res.status(500).send(e.message);
   }
 });
+const  userSchema = joi.object(
+  {
+    nom: joi.string().min(3).max(30).required(),
+    prenom: joi.string().min(3).max(30).required(),
+    sex: joi.string().min(3).max(30).required(),
+    address: joi.string().min(3).max(50).required(),
+    date_de_naissance: joi.string().required(),
+    email: joi.string()
+      .pattern(new RegExp('! # $ % & \' * + - / = ? ^ _ ` { | } ~')),
+  }
+)
 
-
+// nom: 'Almokdad',
+//   prenom: 'muhanad',
+//   sex: 'Homme',
+//   email: 'mouhand@gmail.com',
+//   date_de_naissance: '02/01/1993',
+//   address:
 app.post('/api/user', async (req, res, next) => {
+
+  const newUser = {
+    ...req.body
+  }
   try {
-    const  idNewUser:number = (users.length + 1);
-    const user: User = await req.body;
-    user.id = idNewUser;
-    res.status(201).json(user)
+    db.query("INSERT INTO users SET ?", newUser, async (error, user) => {
+      if (error) {
+        throw error
+      }
+     await res.status(201).json({newUser, id : user.insertId});
+    })
   } catch (e) {
     res.status(500).send(e.message);
   }
@@ -97,17 +95,18 @@ app.post('/api/user', async (req, res, next) => {
 
 
 app.put('/api/user/:id', async (req, res, next) => {
+  const id = +req.params.id;
+  const modifUser = {
+    ...req.body
+  }
+  delete modifUser.iduser;
   try {
-    const id: number = parseInt(req.params.id);
-
-    let user: User = users.find(user => user.id === id);
-
-    if (user){
-      user
-     const userUpDate: User = await res.status(200).json(req.body)
-    }else {
-      throw new Error('user not founded');
-    }
+    db.query("UPDATE users SET ? WHERE users.iduser = ?", [modifUser, id], async (error, user) => {
+      if (error) {
+        throw error
+      }
+     await res.status(201).json(modifUser);
+    })
   } catch (e) {
     res.status(500).send(e.message);
   }
@@ -115,20 +114,16 @@ app.put('/api/user/:id', async (req, res, next) => {
 
 app.delete('/api/user/:id', async (req, res) => {
   try {
-    const id: number = parseInt(req.params.id);
-
-    const indexOfUser = users.findIndex(user => {
-      return user.id === id;
-    });
-    if (indexOfUser != -1){
-      users.splice(indexOfUser, 1);
-      res.status(200).json(users)
-    }else {
-      throw new Error('user not founded');
-    }
+    const id = +req.params.id;
+    db.query("DELETE FROM users WHERE iduser = ?", id, async (error, user) => {
+      if (error || user.affectedRows < 1) {
+        throw error
+      }
+        await res.status(200).json("user is deleted !!!");
+    })
   } catch (e) {
     res.status(500).send(e.message);
   }
 })
 module.exports = app;
-//
+// CREATE TABLE users (iduser INT(6) UNSIGNED AUTO_INCREMENT PRIMARY KEY, nom VARCHAR(30) NOT NULL, prenom VARCHAR(30) NOT NULL, email VARCHAR(50), sex VARCHAR(20), date_de_naissance VARCHAR(50), address VARCHAR(50));
